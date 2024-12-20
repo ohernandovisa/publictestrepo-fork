@@ -135,6 +135,108 @@ function httpAuthorizeWithToken(cardData, customerEmail, referenceInformationCod
         paymentInformation.card = card;
         request.paymentInformation = paymentInformation;
     }
+
+    // MLE Changes to encrypt our request object
+function  MleEncryptPayload(request){
+    var Cipher = require('dw/crypto/Cipher'); // Standard Salesforce Class
+    var cipher = new Cipher(); 
+ 
+    var Bytes = require('dw/util/Bytes');
+ 
+    // Converting request object to String
+    var requestString = JSON.stringify(request);
+ 
+    // Documentation refered https://datatracker.ietf.org/doc/html/rfc7516#section-3.3
+    // Generating random key(256 bit) and IV(96 bit)
+    var SecureRandom = require('dw/crypto/SecureRandom');
+    SecureRandom = new SecureRandom();
+    var key = SecureRandom.nextBytes(32);
+    var iv = SecureRandom.nextBytes(12); 
+    iv = dw.crypto.Encoding.toBase64(iv); // Encoding IV to Base64
+ 
+    // encrypt payload using randomly generated key using dw.crypto.cipher (https://salesforcecommercecloud.github.io/b2c-dev-doc/docs/current/scriptapi/html/index.html?target=class_dw_crypto_Cipher.html)
+    var encryptedpayload = cipher.encrypt(requestString, dw.crypto.Encoding.toBase64(key), 'AES/GCM/NOPADDING', iv, 0);
+ 
+    // seperating cipher text and auth tag from encryptedpayload
+    var encryptedPayloadBytes = dw.crypto.Encoding.fromBase64(encryptedpayload);
+    var l = encryptedPayloadBytes.getLength();
+ 
+    var cipherText = encryptedPayloadBytes.bytesAt(0, l - 16); // Cipher text is encrypted payload except last 16 bytes of the payload using AES256GCM algorithm
+    cipherText = dw.crypto.Encoding.toBase64(cipherText);
+ 
+    var authTag = encryptedPayloadBytes.bytesAt(l - 16, 16); // Authetication tag is last 16 bytes of encrypted payload using AES256GCM algorithm 
+    authTag = dw.crypto.Encoding.toBase64(authTag); 
+ 
+    // function to base64url encode the base64 encoded data.
+    function base64urlEncode(data) {
+        return dw.crypto.Encoding.toBase64URL(dw.crypto.Encoding.fromBase64(data));
+    }
+ 
+    //public key (certificate extracted from p12 file using openssl) uploaded in Business Manager keystore (Adminstration --> Private Keys and Certificate)
+    var CertificateRef = require('dw/crypto/CertificateRef');
+    var publicKeyRef = new CertificateRef("cybersource_sjc_us"); // Add the alias provided in Business Manager in the parameter
+ 
+    //encrypt the AES key using public key
+    var encryptedAESKey = cipher.encryptBytes(key, publicKeyRef, 'RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING', null, 0);
+ 
+    var currentTimestamp = new Date().getTime();
+    currentTimestamp = Math.floor(currentTimestamp / 1000);
+
+    //Built JWE header
+    var joseHeader = {
+        "alg": "RSA-OAEP-256",
+        "enc": "A256GCM",
+        "iat": currentTimestamp,
+        'kid': '7321824136650177107046', // Serial number extracted from p12 file for Cybersource_SJC certificate
+        "cty": "JWT"
+    }
+ 
+    joseHeader = dw.crypto.Encoding.toBase64(new Bytes(JSON.stringify(joseHeader), 'UTF-8'));
+ 
+    //base64url encoding all 5 parts of JWE.
+    joseHeader = base64urlEncode(joseHeader);
+    encryptedAESKey = base64urlEncode(encryptedAESKey);
+    iv = base64urlEncode(iv);
+    cipherText = base64urlEncode(cipherText);
+    authTag = base64urlEncode(authTag);
+ 
+    // JWE token
+    var jwe = joseHeader + '.' + encryptedAESKey + '.' + iv + '.' + cipherText + '.' + authTag;
+ 
+    var jwePayload = {
+        encryptedRequest: jwe
+    }
+
+    jwePayload = JSON.stringify(jwePayload);
+ 
+    // Loggers to check all the values
+    var Logger = require('dw/system/Logger');
+ 
+    Logger.info('JWE token: ' + jwe);
+ 
+    Logger.info('joseHeader: ' + joseHeader);
+    Logger.info('encryptedAESKey: ' + encryptedAESKey);
+    Logger.info('iv: ' + iv);
+    Logger.info('cipherText: ' + cipherText);
+    Logger.info('authTag: ' + authTag);
+
+    return jwePayload;
+ 
+    // Uncomment below code to check for decrytping the payload locally
+    // //private key (p12 file) uploaded in Business Manager keystore (Admnistration --> Private Keys and Certificate)
+    // var KeyRef = require('dw/crypto/KeyRef');
+    // var privatekey = new KeyRef("p12_key"); // Alias of p12 added in Business manager 
+ 
+    // //code to decrypt JWE if we have public/private key pair.
+    // var jweConst = dw.crypto.JWE.parse(jwe);
+    // var header = jweConst.getHeaderMap();
+    // var ppay = jweConst.decrypt(privatekey);
+    // var payloadjwe = jweConst.getPayload();
+}
+
+// Call this method to get encrypted payload
+var encryptedRequest = MleEncryptPayload(request); // Get the encrypted payload and check in cybersource live console
+
     session.privacy.ipAddress = '';
     var result = '';
     instance.createPayment(request, function (data, error, response) { // eslint-disable-line no-unused-vars
