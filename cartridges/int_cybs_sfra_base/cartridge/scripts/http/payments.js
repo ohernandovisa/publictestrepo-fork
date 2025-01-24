@@ -264,10 +264,8 @@ function httpZeroDollarAuth(
     instance.createPayment(request, function (data, error, response) { // eslint-disable-line no-unused-vars
         if (!error) {
             if (configObject.networkTokenizationEnabled && data.processorInformation.paymentAccountReferenceNumber) {
-                // if (CustomObjectMgr.getCustomObject("Network Tokens Webhook", merchantId) == null) {
                     var networkTokenSubscription = require('./networkTokenSubscription');
                     networkTokenSubscription.createNetworkTokenSubscription();
-                // }
             }
             if (data.status === 'AUTHORIZED' || data.status === 'AUTHORIZED_PENDING_REVIEW') {
                 result = data;
@@ -372,10 +370,8 @@ function httpZeroDollarAuthWithTransientToken(
     instance.createPayment(request, function (data, error, response) { // eslint-disable-line no-unused-vars
         if (!error) {
             if (configObject.networkTokenizationEnabled && data.processorInformation.paymentAccountReferenceNumber) {
-                // if (CustomObjectMgr.getCustomObject("Network Tokens Webhook", merchantId) == null) {
                     var networkTokenSubscription = require ('./networkTokenSubscription');
                     networkTokenSubscription.createNetworkTokenSubscription();
-                // }
             }
             if (data.status === 'AUTHORIZED' || data.status === 'AUTHORIZED_PENDING_REVIEW') {
                 result = data;

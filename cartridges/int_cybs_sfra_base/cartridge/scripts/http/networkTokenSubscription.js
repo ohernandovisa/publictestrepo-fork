@@ -132,11 +132,10 @@ function deleteSusbscriprion(id, callback){
 function createNetworkTokenSubscription() {
     retrieveAllCreatedWebhooks(function (data, error, response) {
         if (data[0].webhookId) {
-            Logger.error('Subscription already exists');
             var obj = CustomObjectMgr.getCustomObject("Network Tokens Webhook", merchantId);
                 if (obj == null) {
-                    deleteSusbscriprion(data[0].webhookId, function (data, error, response) {
-                        if(data.status === 'successfully deleted'){
+                    deleteSusbscriprion(data[0].webhookId, function (data, error, responseData) {
+                        if(responseData.status === 'OK'){
                             createNetworkTokenSubscription();
                         }
                     });
