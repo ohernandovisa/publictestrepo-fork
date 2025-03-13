@@ -40,6 +40,18 @@ function processForm(req, paymentForm, viewFormData) {
             case 'jcb':
                 correctCardType = 'JCB';
                 break;
+            case "cartesbancaires":
+                correctCardType = "CartesBancaires";
+                break;
+            case "elo":
+                correctCardType = "Elo";
+                break;
+            case "cup":
+                correctCardType = "China UnionPay";
+                break;
+            case "jcrew":
+                correctCardType = "JCrew";
+                break;     
         }
         // eslint-disable-next-line no-param-reassign
         paymentForm.creditCardFields.cardType.value = correctCardType;

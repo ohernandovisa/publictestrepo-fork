@@ -1,5 +1,14 @@
 ## <ins>Release Notes
 
+**Version 25.2.0 (March 2025)**
+• Added Message-Level Encryption (MLE) feature.  
+• Added support for additional card types in flex microform. 
+
+**Version 25.1.0 (January 2025)**
+• Upgraded flex v0.11 to v2. 
+• Added webhook subscription deletion from locale if subscription is deleted at Cybersource end and vice-versa 
+• Handled undefined exception scenario in 3ds flow. 
+
 **Version 24.4.0 (September 2024)**
 • Added DMPA support. 
 • Upgraded to jQuery v3.7.0.
